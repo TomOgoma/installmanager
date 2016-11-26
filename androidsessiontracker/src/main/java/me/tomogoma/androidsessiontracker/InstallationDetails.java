@@ -25,8 +25,22 @@ public class InstallationDetails implements Storable {
         Cache cache = new LevelDBCache(c, INSTALLATION_DETAILS_FILE);
         String idStr;
         try {
-            idStr = cache.get(INSTALLATION_DETAILS_KEY);
-        } catch (IOException | Cache.InvalidKeyException e) {
+            while (true) {
+                try {
+                    idStr = cache.get(INSTALLATION_DETAILS_KEY);
+                } catch (IOException e) {
+                    String message = e.getMessage();
+                    if (message.contains("EAGAIN") || message.contains("EWOULDBLOCK")) {
+                        Log.w(LOG_TAG, "Caught IOException trying to fetch" +
+                                " installationUUID: " + e.getMessage() +
+                                ", retrying...");
+                        continue;
+                    }
+                    throw new RuntimeException(e);
+                }
+                break;
+            }
+        } catch (Cache.InvalidKeyException e) {
             Log.e(LOG_TAG, "Failed to get installation details");
             throw new RuntimeException(e);
         }
